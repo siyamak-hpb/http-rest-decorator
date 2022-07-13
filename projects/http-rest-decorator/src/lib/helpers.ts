@@ -1,15 +1,23 @@
-import { HttpHeaders, HttpParams, HttpRequest, HttpResponse } from '@angular/common/http';
-import { HttpHeaderType, HttpService } from './http.service';
-import { Observable} from 'rxjs';
+import {
+  HttpHeaders,
+  HttpParams,
+  HttpRequest,
+  HttpResponse,
+} from "@angular/common/http";
+import { HttpHeaderType, HttpService } from "./http.service";
+import { Observable } from "rxjs";
 
 /**
  * http request decorator
  * @param method http request type (GET, POST, PUT, etc.)
  */
 export function methodBuilder(method: string) {
-  return function (url: string = '') {
-    return function (target: HttpService, propertyKey: string, descriptor: any) {
-
+  return function (url: string = "") {
+    return function (
+      target: HttpService,
+      propertyKey: string,
+      descriptor: any
+    ) {
       const pPath = target[`${propertyKey}_path_parameters`];
       const pQuery = target[`${propertyKey}_query_parameters`];
       const pBody = target[`${propertyKey}_body_parameters`];
@@ -19,28 +27,47 @@ export function methodBuilder(method: string) {
         const body = createBody(pBody, descriptor, args);
         const resUrl = createPath(url, pPath, args);
         const params = createQuery(pQuery, args);
-        const headers = createHeaders(pHeaders, descriptor, this.getDefaultHeaders(), args);
+        const headers = createHeaders(
+          pHeaders,
+          descriptor,
+          this.getDefaultHeaders(),
+          args
+        );
 
-        let request = new HttpRequest(method, this.getBaseUrl() + resUrl, body, {
-          headers: headers,
-          params: params
-        });
+        let request = new HttpRequest(
+          method,
+          this.getBaseUrl() + resUrl,
+          body,
+          {
+            headers: headers,
+            params: params,
+          }
+        );
 
         if (descriptor.adapters) {
-          request = this.requestInterceptor(request, descriptor.adapters.requestFn,
-            descriptor.adapters ? descriptor.adapters.exceptionFn : null);
+          request = this.requestInterceptor(
+            request,
+            descriptor.adapters.requestFn,
+            descriptor.adapters ? descriptor.adapters.exceptionFn : null
+          );
         }
 
         let obs$: Observable<HttpResponse<any>>;
 
         if (descriptor.mockup) {
-          obs$ = this.mockupInterceptor(request, descriptor.mockup, descriptor.mockupArgs);
+          obs$ = this.mockupInterceptor(
+            request,
+            descriptor.mockup,
+            descriptor.mockupArgs
+          );
         } else {
           obs$ = this.http.request(request);
         }
-        obs$ = this.responseInterceptor(obs$,
+        obs$ = this.responseInterceptor(
+          obs$,
           descriptor.adapters ? descriptor.adapters.response : null,
-          descriptor.adapters ? descriptor.adapters.exceptionFn : null);
+          descriptor.adapters ? descriptor.adapters.exceptionFn : null
+        );
 
         return obs$;
       };
@@ -56,42 +83,57 @@ export function methodBuilder(method: string) {
  */
 export function methodBuilderSync(method: string) {
   return function (url: string) {
-    return function (target: HttpService, propertyKey: string, descriptor: any) {
+    return function (
+      target: HttpService,
+      propertyKey: string,
+      descriptor: any
+    ) {
       const pPath = target[`${propertyKey}_path_parameters`];
       const pQuery = target[`${propertyKey}_query_parameters`];
       const pBody = target[`${propertyKey}_body_parameters`];
       const pHeaders = target[`${propertyKey}_headers_parameters`];
 
       descriptor.value = function (...args: any[]) {
-
         let body = createBody(pBody, descriptor, args);
         const resUrl = createPath(url, pPath, args);
         const params = createQuerySync(pQuery, args);
-        const headers = this.getDefaultHeaders();
+        const headers = createHeaders(
+          pHeaders,
+          descriptor,
+          this.getDefaultHeaders(),
+          args
+        );
 
         const request = new XMLHttpRequest();
         request.open(method, this.getBaseUrl() + resUrl, false);
 
-        Object.keys(headers).forEach(key => {
+        Object.keys(headers).forEach((key) => {
           request.setRequestHeader(key, headers[key]);
         });
 
-        Object.keys(params).forEach(key => {
+        Object.keys(params).forEach((key) => {
           request.setRequestHeader(key, headers[key]);
         });
 
         if (descriptor.adapters) {
-          body = this.requestInterceptorSync(body, this.getBaseUrl() + resUrl,
-            createQuerySync(pPath, args), descriptor.adapters.requestFn,
-            descriptor.adapters ? descriptor.adapters.exceptionFn : null);
+          body = this.requestInterceptorSync(
+            body,
+            this.getBaseUrl() + resUrl,
+            createQuerySync(pPath, args),
+            descriptor.adapters.requestFn,
+            descriptor.adapters ? descriptor.adapters.exceptionFn : null
+          );
         }
 
         request.send(body);
 
         const responseBody = JSON.parse(request.response);
         if (descriptor.adapters) {
-          return this.responseInterceptorSync(responseBody, descriptor.adapters.responseFn,
-            descriptor.adapters ? descriptor.adapters.exceptionFn : null);
+          return this.responseInterceptorSync(
+            responseBody,
+            descriptor.adapters.responseFn,
+            descriptor.adapters ? descriptor.adapters.exceptionFn : null
+          );
         } else {
           return responseBody;
         }
@@ -107,12 +149,16 @@ export function methodBuilderSync(method: string) {
  */
 export function paramBuilder(paramName: string) {
   return function (key: string) {
-    return function (target: HttpService, propertyKey: string, parameterIndex: number) {
+    return function (
+      target: HttpService,
+      propertyKey: string,
+      parameterIndex: number
+    ) {
       const metadataKey = `${propertyKey}_${paramName}_parameters`;
 
       const paramObj = {
         key: key,
-        parameterIndex: parameterIndex
+        parameterIndex: parameterIndex,
       };
 
       if (Array.isArray(target[metadataKey])) {
@@ -153,21 +199,27 @@ function createPath(url: string, path: any[], args: any[]): string {
       }
       const value = args[path[p].parameterIndex];
 
-      resUrl = resUrl.replace(`{${path[p].key}}`, (value instanceof Date) ? value.toJSON() : value);
+      resUrl = resUrl.replace(
+        `{${path[p].key}}`,
+        value instanceof Date ? value.toJSON() : value
+      );
     }
   }
 
-  const urlItems = resUrl.split('?');
+  const urlItems = resUrl.split("?");
 
   if (urlItems.length === 2) {
-    let prms = urlItems[1].replace(/&\w*=undefined|\w*=undefined/gm, '');
-    if (prms.length > 0 && prms[0] === '&') {
+    let prms = urlItems[1].replace(/&\w*=undefined|\w*=undefined/gm, "");
+    if (prms.length > 0 && prms[0] === "&") {
       prms = prms.substr(1);
     }
-    return urlItems[0] + (prms ? '?' + prms : '');
+    return urlItems[0] + (prms ? "?" + prms : "");
   }
 
-  const lastUndefinedIndex = resUrl.indexOf('/undefined', resUrl.length - '/undefined'.length);
+  const lastUndefinedIndex = resUrl.indexOf(
+    "/undefined",
+    resUrl.length - "/undefined".length
+  );
 
   if (lastUndefinedIndex !== -1) {
     return resUrl.substring(0, lastUndefinedIndex);
@@ -186,8 +238,8 @@ function createQuery(query: any[], args: any[]): HttpParams {
 
   if (query) {
     query
-      .filter(f => args[f.parameterIndex])
-      .forEach(p => {
+      .filter((f) => args[f.parameterIndex])
+      .forEach((p) => {
         const key = p.key;
         let value = args[p.parameterIndex];
         if (value instanceof Object) {
@@ -209,14 +261,16 @@ function createQuerySync(query: any[], args: any[]): string {
 
   if (query) {
     query
-      .filter(p => args[p.parameterIndex])
-      .forEach(p => {
+      .filter((p) => args[p.parameterIndex])
+      .forEach((p) => {
         const key = p.key;
         const encodedKey = encodeURIComponent(key);
         let value = args[p.parameterIndex];
 
         if (value instanceof Array) {
-          prms.concat(value.map(v => `${encodedKey}=${encodeURIComponent(v)}`));
+          prms.concat(
+            value.map((v) => `${encodedKey}=${encodeURIComponent(v)}`)
+          );
           return;
         }
         if (value instanceof Object) {
@@ -227,7 +281,7 @@ function createQuerySync(query: any[], args: any[]): string {
       });
   }
 
-  return prms.join('&');
+  return prms.join("&");
 }
 
 /**
@@ -237,19 +291,20 @@ function createQuerySync(query: any[], args: any[]): string {
  * @param defaultHeaders default headers
  * @param args args
  */
-function createHeaders(pHeaders: any,
-                       descriptor: any,
-                       defaultHeaders: HttpHeaderType,
-                       args: any[])
-  : HttpHeaders {
-  const headers = new HttpHeaders(defaultHeaders);
+function createHeaders(
+  pHeaders: any,
+  descriptor: any,
+  defaultHeaders: HttpHeaderType,
+  args: any[]
+): HttpHeaders {
+  let headers = new HttpHeaders(defaultHeaders);
 
   for (const p in descriptor.headers) {
     if (descriptor.headers.hasOwnProperty(p)) {
       if (headers.has(p)) {
         headers.delete(p);
       }
-      headers.append(p, descriptor.headers[p]);
+      headers = headers.set(p, descriptor.headers[p]);
     }
   }
 
@@ -259,11 +314,13 @@ function createHeaders(pHeaders: any,
         if (headers.has(p)) {
           headers.delete(p);
         }
-        headers.append(pHeaders[p].key, args[pHeaders[p]].parameterIndex);
+        headers = headers.set(
+          pHeaders[p].key,
+          args[pHeaders[p].parameterIndex]
+        );
       }
     }
   }
 
   return headers;
-
 }
